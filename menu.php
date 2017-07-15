@@ -1,75 +1,80 @@
 <?php
-header("Content-type: text/html; charset=utf-8");
-$ACCESS_TOKEN ="aJsertibfku3A1NPphfPPx4Dwi1Lm431nvdcGK7FuIyTODCozT5IHcz38eMEHomaM4nEDLt1LmgXMKsdLLZxfIEG9OIQckAmGbMng44pRZm3n6WqUVpfH4j_Eu6DCXcvCNBiAEALWK";
-
-
-//创建菜单
-function createMenu($data){
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$ACCESS_TOKEN);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
-curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; MSIE 5.01; Windows NT 5.0)');
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-curl_setopt($ch, CURLOPT_AUTOREFERER, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$tmpInfo = curl_exec($ch);
-if (curl_errno($ch)) {
-  return curl_error($ch);
-}
-
-curl_close($ch);
-return $tmpInfo;
-
-}
-
-//获取菜单
-function getMenu(){
-return file_get_contents("https://api.weixin.qq.com/cgi-bin/menu/get?access_token=".$ACCESS_TOKEN);
-}
-
-//删除菜单
-function deleteMenu(){
-return file_get_contents("https://api.weixin.qq.com/cgi-bin/menu/delete?access_token=".$ACCESS_TOKEN);
-}
-
-
-
-
-
-$data = '{
-     "button":[
-     {
-          "type":"click",
-          "name":"首页",
-          "key":"home"
-      },
-      {
-           "type":"click",
-           "name":"简介",
-           "key":"introduct"
-      },
-      {
-           "name":"菜单",
-           "sub_button":[
-            {
-               "type":"click",
-               "name":"hello word",
-               "key":"V1001_HELLO_WORLD"
-            },
-            {
-               "type":"click",
-               "name":"赞一下我们",
-               "key":"V1001_GOOD"
-            }]
-       }]
-}';
-
-
-
-
-echo createMenu($data);
-//echo getMenu();
-//echo deleteMenu();
+	// session_start();
+	// include './wxModel.php';
+	// $wxMod = new wxModel();
+	$access_token = "A6EEsI6vGmkBFZA9sh44nkQENelxntbKIz75aBhZUwIHJ6nzbhWBWUjNs6eYli0Dx5tESLTdWAyHJveJjGI5uN9A5FgUVfCmxlYHuidumz2p4J-eKKGiU5O1FPXzkQOhDQVdACAQDI";
+	$jsonmenu = '{ 
+	  "button":[ 
+	  { 
+	   "name":"天气预报", 
+	   "sub_button":[ 
+	   { 
+		"type":"click", 
+		"name":"北京天气", 
+		"key":"天气北京"
+	   }, 
+	   { 
+		"type":"click", 
+		"name":"上海天气", 
+		"key":"天气上海"
+	   }, 
+	   { 
+		"type":"click", 
+		"name":"广州天气", 
+		"key":"天气广州"
+	   }, 
+	   { 
+		"type":"click", 
+		"name":"深圳天气", 
+		"key":"天气深圳"
+	   }, 
+	   { 
+		"type":"view", 
+		"name":"本地天气", 
+		"url":"http://m.hao123.com/a/tianqi"
+	   }] 
+	   
+	  
+	  }, 
+	  { 
+	   "name":"瑞雪", 
+	   "sub_button":[ 
+	   { 
+		"type":"click", 
+		"name":"公司简介", 
+		"key":"company"
+	   }, 
+	   { 
+		"type":"click", 
+		"name":"趣味游戏", 
+		"key":"游戏"
+	   }, 
+	   { 
+		"type":"click", 
+		"name":"讲个笑话", 
+		"key":"笑话"
+	   }] 
+	   
+	  
+	  }] 
+	}'; 
+	  
+	  
+	$url = "https://api.weixin.qq.com/cgi-bin/menu/create?access_token=".$access_token; 
+	$result = https_request($url, $jsonmenu); 
+	var_dump($result); 
+	  
+	function https_request($url,$data = null){ 
+		 $curl = curl_init(); 
+		 curl_setopt($curl, CURLOPT_URL, $url); 
+		 curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, FALSE); 
+		 curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, FALSE); 
+		 if (!empty($data)){ 
+		  curl_setopt($curl, CURLOPT_POST, 1); 
+		  curl_setopt($curl, CURLOPT_POSTFIELDS, $data); 
+		 } 
+		 curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1); 
+		 $output = curl_exec($curl); 
+		 curl_close($curl); 
+		 return $output; 
+	}

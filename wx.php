@@ -10,7 +10,5 @@ if (isset($_GET['echostr'])) {
 } else {
     // 接收微信服务器发送过来的xml
     $wechatObj->responseMsg();
-
-
 }
 

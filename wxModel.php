@@ -1,282 +1,565 @@
 <?php
 class wxModel
 {
-	/*
-	 * 接口配置信息，此信息需要你有自己的服务器资源，填写的URL需要正确响应微信发送的Token验证*/
-	public function valid()
-	{
-		$echoStr = $_GET["echostr"];
+    public $appid = "wx1f3cfdfd87af215b"; // 第三方用户唯一凭证
+    public $appsecret = "4d779e46306234e2c7d2d42e96f7e84c"; // 第三方用户唯一凭证密钥，即appsecret
 
-		//valid signature , option
-		if ($this->checkSignature()) {
-			echo $echoStr;
-			exit;
-		}
-	}
+    /*
+     * 接口配置信息，此信息需要你有自己的服务器资源，填写的URL需要正确响应微信发送的Token验证
+     * */
+    public function valid()
+    {
+        $echoStr = $_GET["echostr"];
 
-	/*
-	 * 微信发送消息，开发者服务器接收xml格式数据，然后进行业务的逻辑处理*/
-	public function responseMsg()
-	{
-		// < 5.6       $GLOBALS
-		// PHP > 7.0   file_get_contents()
-		// file_put_contents('data.txt', $postStr);
-		// $postStr = $GLOBALS["HTTP_RAW_POST_DATA"];          // POST数据
-		$postStr = file_get_contents('php://input');
-		// file_put_contents('./a.txt', $postStr,FILE_APPEND);
+        //valid signature , option
+        if ($this->checkSignature()) {
+            echo $echoStr;
+            exit;
+        }
+    }
 
-		// 使用 Medoo 类 把xml数据写入数据库
-		include './db.php';
-		$data = array(
-			'xml' => $postStr,
-		);
-		$database->insert('xml', $data);
+    /*
+     * 微信发送消息，开发者服务器接收xml格式数据，然后进行业务的逻辑处理
+     * */
+    public function responseMsg()
+    {
+        // < 5.6       $GLOBALS
+        // PHP > 7.0   file_get_contents()
+        // file_put_contents('data.txt', $postStr);
+        // $postStr = $GLOBALS["HTTP_RAW_POST_DATA"];          // POST数据
+    	$postStr = file_get_contents('php://input');
+        // 使用 Medoo 类 把xml数据写入数据库
+        include './db.php';
+        $data = array(
+            'xml' => $postStr,
+        );
+        $database->insert('xml', $data);
 
-		if (!empty($postStr)) {
-			/* libxml_disable_entity_loader is to prevent XML eXternal Entity Injection,
-			   the best way is to check the validity of xml by yourself */
-			// Disable the ability to load external entities
-			libxml_disable_entity_loader(true);
+        if (!empty($postStr)) {
+            /* libxml_disable_entity_loader is to prevent XML eXternal Entity Injection,
+               the best way is to check the validity of xml by yourself */
+            // Disable the ability to load external entities
+            libxml_disable_entity_loader(true);
 
-			// 接收到微信服务器发送过来的xml数据：分为：时间、消息，按照 msgType 分，转换为对象
-			$postObj = simplexml_load_string($postStr, 'SimpleXMLElement', LIBXML_NOCDATA);
+            // 接收到微信服务器发送过来的xml数据：分为：时间、消息，按照 msgType 分，转换为对象
+            $postObj = simplexml_load_string($postStr, 'SimpleXMLElement', LIBXML_NOCDATA);
 
-			$tousername = $postObj->ToUserName;
-			$fromusername = $postObj->FromUserName;
-			$msgtype = $postObj->MsgType;
-			$keyword = trim($postObj->Content);
+            $tousername = $postObj->ToUserName;
+            $fromusername = $postObj->FromUserName;
+            $msgtype = $postObj->MsgType;
+            $keyword = trim($postObj->Content);
 
-			// 图文  -》 返回图文列表    其他任何关键   默认
-			if ($msgtype == 'text') {
-				// 判断关键字，根据关键字来自定义回复的消息
-				if ($keyword == "图文") {
-					// php + mysql    读取数据库 拿到文章列表的数据
-					$arr = array(
-						array(
-							'title' => "套路太深！唯品会对清空微博作出解释 网友：这广告6到飞",
-							'date' => "2017-6-2",
-							'url' => "http://www.chinaz.com/news/quka/2017/0602/715449.shtml",
-							'description' => '日前，唯品会清空了官方微博，成功的引起了众人的注意。',
-							'picUrl' => "http://upload.chinaz.com/2017/0602/6363201407728157524057839.jpeg"
-						),
-						array(
-							'title' => "刘强东章泽天向中国人民大学捐赠3亿 设人大京东基金",
-							'date' => "2017-6-2",
-							'url' => "http://www.chinaz.com/news/2017/0602/715434.shtml",
-							'description' => '京东集团创始人、董事局主席兼首席执行官及京东集团今天下午在中国人民大学宣布',
-							'picUrl' => "http://upload.chinaz.com/2017/0602/6363201407728157524057839.jpeg"
-						),
-						array(
-							'title' => "高通发布 QC 4+ 快充技术，让努比亚 Z17 当了一次“业界领先”",
-							'date' => "2017-6-2",
-							'url' => "http://www.chinaz.com/mobile/2017/0602/715429.shtml",
-							'description' => '充电 5 分钟，通话 2 小时这句广告词',
-							'picUrl' => "http://upload.chinaz.com/2017/0602/6363201407728157524057839.jpeg"
-						)
-					);
-					$textTpl = <<<EOT
-								<xml>
-								<ToUserName><![CDATA[%s]]></ToUserName>
-								<FromUserName><![CDATA[%s]]></FromUserName>
-								<CreateTime>%s</CreateTime>
-								<MsgType><![CDATA[%s]]></MsgType>
-								<ArticleCount>%s</ArticleCount>
-								<Articles>
+            // 图文  -》 返回图文列表    其他任何关键   默认
+            if ($msgtype == 'text') {
+                // 判断关键字，根据关键字来自定义回复的消息
+                if ($keyword == "图文") {
+                    // php + mysql    读取数据库 拿到文章列表的数据
+                    $arr = array(
+                        array(
+                            'title' => "套路太深！唯品会对清空微博作出解释 网友：这广告6到飞",
+                            'date' => "2017-6-2",
+                            'url' => "http://www.chinaz.com/news/quka/2017/0602/715449.shtml",
+                            'description' => '日前，唯品会清空了官方微博，成功的引起了众人的注意。',
+                            'picUrl' => "http://upload.chinaz.com/2017/0602/6363201407728157524057839.jpeg"
+                        ),
+                        array(
+                            'title' => "刘强东章泽天向中国人民大学捐赠3亿 设人大京东基金",
+                            'date' => "2017-6-2",
+                            'url' => "http://www.chinaz.com/news/2017/0602/715434.shtml",
+                            'description' => '京东集团创始人、董事局主席兼首席执行官及京东集团今天下午在中国人民大学宣布',
+                            'picUrl' => "http://upload.chinaz.com/2017/0602/6363201407728157524057839.jpeg"
+                        ),
+                        array(
+                            'title' => "高通发布 QC 4+ 快充技术，让努比亚 Z17 当了一次“业界领先”",
+                            'date' => "2017-6-2",
+                            'url' => "http://www.chinaz.com/mobile/2017/0602/715429.shtml",
+                            'description' => '充电 5 分钟，通话 2 小时这句广告词',
+                            'picUrl' => "http://upload.chinaz.com/2017/0602/6363201407728157524057839.jpeg"
+                        )
+                    );
+                    $textTpl = <<<EOT
+                                <xml>
+                                <ToUserName><![CDATA[%s]]></ToUserName>
+                                <FromUserName><![CDATA[%s]]></FromUserName>
+                                <CreateTime>%s</CreateTime>
+                                <MsgType><![CDATA[%s]]></MsgType>
+                                <ArticleCount>%s</ArticleCount>
+                                <Articles>
 EOT;
 
-					$str = "";
-					foreach ($arr as $v) {
-						$str .= "<item>";
-						$str .= "<Title><![CDATA[" . $v['title'] . "]]></Title>";
-						$str .= "<Description><![CDATA[" . $v['description'] . "]]></Description>";
-						$str .= "<PicUrl><![CDATA[" . $v['picUrl'] . "]]></PicUrl>";
-						$str .= "<Url><![CDATA[" . $v['url'] . "]]></Url>";
-						$str .= "</item>";
-					}
+                    $str = "";
+                    foreach ($arr as $v) {
+                        $str .= "<item>";
+                        $str .= "<Title><![CDATA[" . $v['title'] . "]]></Title>";
+                        $str .= "<Description><![CDATA[" . $v['description'] . "]]></Description>";
+                        $str .= "<PicUrl><![CDATA[" . $v['picUrl'] . "]]></PicUrl>";
+                        $str .= "<Url><![CDATA[" . $v['url'] . "]]></Url>";
+                        $str .= "</item>";
+                    }
 
-					$textTpl .= $str;
-					$textTpl .= "</Articles></xml>";
+                    $textTpl .= $str;
+                    $textTpl .= "</Articles></xml>";
 
-					$time = time();
-					$msgtype = 'news';
-					$nums = count($arr);
+                    $time = time();
+                    $msgtype = 'news';
+                    $nums = count($arr);
 
-					// Return a formatted string
-					$retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $nums);
-					echo $retStr;
-				}
+                    // Return a formatted string
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $nums);
+                    echo $retStr;
+                }
 
-				// 接收到的关键字：美女，返回美图图片
-				if ($keyword == "美女") {
-					$textTpl = <<<EOT
-								<xml>
-								<ToUserName><![CDATA[%s]]></ToUserName>
-								<FromUserName><![CDATA[%s]]></FromUserName>
-								<CreateTime>%s</CreateTime>
-								<MsgType><![CDATA[%s]]></MsgType>
-								<Image>
-								<MediaId><![CDATA[%s]]></MediaId>
-								</Image>
-								</xml>
+                // 接收到的关键字：美女，返回美图图片
+                if ($keyword == "美女") {
+                    $textTpl = <<<EOT
+                                <xml>
+                                <ToUserName><![CDATA[%s]]></ToUserName>
+                                <FromUserName><![CDATA[%s]]></FromUserName>
+                                <CreateTime>%s</CreateTime>
+                                <MsgType><![CDATA[%s]]></MsgType>
+                                <Image>
+                                <MediaId><![CDATA[%s]]></MediaId>
+                                </Image>
+                                </xml>
 EOT;
-					$time = time();
-					$msgtype = 'image';
-					$mediaid = 'HMqPQ6if9l18ISY8k7fblAsVHCXyinnzACY7eJP_NNqOzBAxKPVYh-z6wFHyqJa3';
+                    $time = time();
+                    $msgtype = 'image';
+                    $mediaid = 'uAC6dnECCy9i4IsETFjcYxVExvWggmjTeo5OM331zRQ_tGXx-pH4IBAPbD4Jcefa';
 
-					$retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $mediaid);
-					echo $retStr;
-				}
-			}
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $mediaid);
+                    echo $retStr;
+                }
 
-			// 判断是否发生了事件推送
-			if ($msgtype == 'event') {
-				$event = $postObj->Event;
-				// 订阅事件
-				if ($event == 'subscribe')
-				{
-					// 订阅后，发送的文本消息
-					$textTpl = "<xml>
-							<ToUserName><![CDATA[%s]]></ToUserName>
-							<FromUserName><![CDATA[%s]]></FromUserName>
-							<CreateTime>%s</CreateTime>
-							<MsgType><![CDATA[%s]]></MsgType>
-							<Content><![CDATA[%s]]></Content>
-							<FuncFlag>0</FuncFlag>
-							</xml>";
-					$time = time();
-					$msgtype = 'text';
-					$content = "欢迎来到PHP27，请输入图文，查看图文";
+                // 天气预报：天气+广州
+                if (substr($keyword, 0, 6) == '天气') {
+                    $city = substr($keyword, 6, strlen($keyword));
+                    $str = $this->getWeather($city);
 
-					$retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
-					echo $retStr;
-				}
-			}
+                    // 发送天气的消息
+                    $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
+                    $time = time();
+                    $msgtype = 'text';
+                    $arr = json_decode($str,true);
+                    // $content = $arr;
+                    $content = $arr['result']['today']['city']."今天的天气信息：\n 温度：".$arr['result']['today']['temperature']." \n 气候：".$arr['result']['today']['weather']."\n时间:".$arr['result']['today']['date_y'];
+                    
+                    /*
+                        广州今天的天气信息：\n
+                        温度：\n
+                        气候：\n
+                        时间：\n
+                     */
 
-			$time = time();
-			$msgtype = $postObj->MsgType;
-			$content = "欢迎来到微信公众号的开发世界！__GZPHP27";
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+                    echo $retStr;
+                }
 
-			/*
-			<xml>
-			<ToUserName><![CDATA[toUser]]></ToUserName>
-			<FromUserName><![CDATA[fromUser]]></FromUserName>
-			<CreateTime>12345678</CreateTime>
-			<MsgType><![CDATA[text]]></MsgType>
-			<Content><![CDATA[你好]]></Content>
-			</xml>
-			*/
-			// 发送消息的xml模板：文本消息
-			$textTpl = "<xml>
-							<ToUserName><![CDATA[%s]]></ToUserName>
-							<FromUserName><![CDATA[%s]]></FromUserName>
-							<CreateTime>%s</CreateTime>
-							<MsgType><![CDATA[%s]]></MsgType>
-							<Content><![CDATA[%s]]></Content>
-							<FuncFlag>0</FuncFlag>
-							</xml>";
+                if ($keyword == '测试') {
+                    // 发送天气的消息
+                    $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
+                    $time = time();
+                    $msgtype = 'text';
+                    $content = '<a href="http://119.23.60.21/demo.php">测试</a>';
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+                    echo $retStr;
+                }
 
-			$time = time();
-			$msgtype = 'text';
-			$content = "欢迎来到微信公众号的开发世界！__GZPHP27";
+                 if ($keyword == '分享') {
+                    $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
+                    $time = time();
+                    $msgtype = 'text';
+                    $content = '<a href="http://119.23.60.21/share.php">分享</a>';
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+                    echo $retStr;
+                }
+            }
 
-			// Return a formatted string
-			$retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
-			echo $retStr;
+            // 判断是否发生了事件推送
+            if ($msgtype == 'event') {
+                $event = $postObj->Event;
+                // 订阅事件
+                if ($event == 'subscribe')
+                {
+                    // 订阅后，发送的文本消息
+                    $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
+                    $time = time();
+                    $msgtype = 'text';
+                    $content = "欢迎来到PHP27，请输入美女，查看图片(有效期仅限今天)";
 
-		} else {
-			echo "";
-			exit;
-		}
-	}
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+                    echo $retStr;
+                }
 
-	/*
-	 * 验证服务器地址的有效性*/
-	private function checkSignature()
-	{
-		/*
-		1）将token、timestamp、nonce三个参数进行字典序排序
-		2）将三个参数字符串拼接成一个字符串进行sha1加密
-		3）开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
-		 */
-		// you must define TOKEN by yourself
-		if (!defined("TOKEN")) {
-			throw new Exception('TOKEN is not defined!');
-		}
+                if ($event == "SCAN") {
+                    $key = $postObj->EventKey;
+                    if ($key == '888') {
+                        $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
+                        $time = time();
+                        $msgtype = 'text';
+                        $content = "扫描了临时二维码！";
 
-		$signature = $_GET["signature"];
+                        $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+                        echo $retStr;
+                    }
+                }
 
-		$timestamp = $_GET["timestamp"];
-		$nonce = $_GET["nonce"];
-		$token = TOKEN;
+                // 点击菜单的时间推送
+                if ($event == 'CLICK')
+                {
+                    // 判断到底是哪一个菜单
+                    $key = $postObj->EventKey;
 
-		$tmpArr = array($token, $timestamp, $nonce);
-		// use SORT_STRING rule
-		sort($tmpArr, SORT_STRING);
-		$tmpStr = implode($tmpArr);
-		$tmpStr = sha1($tmpStr);
+                    switch ($key) {
+                        case '20000':
+                            $content = "您点击的是图文列表菜单";
+                            break;
+                        case '30000':
+                            $content = "您点击的是关于我们菜单";
+                            break;
+                        case '40000':
+                            $content = "您点击的是帮助信息菜单";
+                            break;
+                        default:
+                            $content = "不存在这个菜单";
+                            break;
+                    }
 
-		if ($tmpStr == $signature) {
-			return true;
-		} else {
-			return false;
-		}
-	}
+                    $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
+                    $time = time();
+                    $msgtype = 'text';
 
-	/*
-	 * curl请求，获取返回的数据
-	 * */
-	public function getData($url)
-	{
-		// 1. cURL初始化
-		$ch = curl_init();
+                    $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+                    echo $retStr;
+                }
+            }
 
-		// 2. 设置cURL选项
-		/*
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-		*/
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+            $time = time();
+            $msgtype = $postObj->MsgType;
+            $content = "欢迎来到微信公众号的开发世界！__GZPHP27";
 
-		// 3. 执行cURL请求
-		$ret = curl_exec($ch);
+            $textTpl = "<xml>
+                            <ToUserName><![CDATA[%s]]></ToUserName>
+                            <FromUserName><![CDATA[%s]]></FromUserName>
+                            <CreateTime>%s</CreateTime>
+                            <MsgType><![CDATA[%s]]></MsgType>
+                            <Content><![CDATA[%s]]></Content>
+                            <FuncFlag>0</FuncFlag>
+                            </xml>";
 
-		// 4. 关闭资源
-		curl_close($ch);
+            $time = time();
+            $msgtype = 'text';
+            $content = "欢迎来到微信公众号的开发世界！__GZPHP27";
 
-		return $ret;
-	}
+            // Return a formatted string
+            $retStr = sprintf($textTpl, $fromusername, $tousername, $time, $msgtype, $content);
+            echo $retStr;
 
-	/*
-	 * JSON 转化为数组
-	 * */
-	public function jsonToArray($json)
-	{
-		$arr = json_decode($json, 1);
-		return $arr;
-	}
+        } else {
+            echo "";
+            exit;
+        }
+    }
 
-	public function getAccessToken()
-	{
-		// redis  memcache SESSION
-		session_start();
+    /*
+     * 验证服务器地址的有效性
+     * */
+    private function checkSignature()
+    {
+        /*
+            1）将token、timestamp、nonce三个参数进行字典序排序
+            2）将三个参数字符串拼接成一个字符串进行sha1加密
+            3）开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
+         */
+        // you must define TOKEN by yourself
+        if (!defined("TOKEN")) {
+            throw new Exception('TOKEN is not defined!');
+        }
 
-		if ($_SESSION['access_token'] && ( time() - $_SESSION['expire_time'] ) < 7000 )
-		{
-			return $_SESSION['access_token'];
-		} else {
-			$appid = "wx1f3cfdfd87af215b";
-			$appsecret = "4d779e46306234e2c7d2d42e96f7e84c";
+        $signature = $_GET["signature"];    // 微信加密签名
 
-			$url = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=".$appid."&secret=".$appsecret;
-			$access_token = $this->jsonToArray($this->getData($url))['access_token'];
+        $timestamp = $_GET["timestamp"];    // 时间戳
+        $nonce = $_GET["nonce"];            // 随机数
+        $token = TOKEN;                     
 
-			// 写入SESSION
-			$_SESSION['access_token'] = $access_token;
-			$_SESSION['expire_time'] = time();
-			return $access_token;
-		}
-	}
+        $tmpArr = array($token, $timestamp, $nonce);
+        // use SORT_STRING rule
+        sort($tmpArr, SORT_STRING); // 将token、timestamp、nonce三个参数进行字典序排序
+        $tmpStr = implode($tmpArr); // 将三个参数字符串拼接成一个字符串
+        $tmpStr = sha1($tmpStr);    // 对字符串进行sha1加密
+
+        if ($tmpStr == $signature) { // 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /*
+     * curl请求，获取返回的数据
+     * */
+    public function getData($url, $method='GET', $arr='')
+    {
+        // 1. cURL初始化
+        $ch = curl_init();
+
+        // 2. 设置cURL选项
+        /*
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        */
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        if (strtoupper($method) == 'POST') {
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $arr);
+        }
+
+        // 3. 执行cURL请求
+        $ret = curl_exec($ch);
+
+        // 4. 关闭资源
+        curl_close($ch);
+
+        return $ret;
+    }
+
+    /*
+     * JSON 转化为数组
+     * */
+    public function jsonToArray($json)
+    {
+        $arr = json_decode($json, 1);
+        return $arr;
+    }
+
+    // 获取access_token值
+    public function getAccessToken(){ 
+        session_start();
+
+        if (isset($_SESSION['access_token']) && (time()-$_SESSION['expire_time']) < 7000 )
+        {
+            return $_SESSION['access_token'];
+        } else {
+            $appid = "wx1f3cfdfd87af215b";
+            $appsecret = "4d779e46306234e2c7d2d42e96f7e84c";
+
+            $url = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=".$appid."&secret=".$appsecret; // access_token接口调用地址
+            $access_token = $this->jsonToArray($this->getData($url))['access_token'];
+
+            // 写入SESSION，防止重复调用(access_token一天只能获取2000次)
+            $_SESSION['access_token'] = $access_token;
+            $_SESSION['expire_time'] = time(); // 一个access_token的过期时间为7200秒
+            return $access_token;
+        }
+    }
+
+    public function getWeather($city)
+    {
+        $appkey = '8a30fa94779bdc562039808cee4a0382';
+
+        // 聚合数据天气接口
+        $url = "http://v.juhe.cn/weather/index?format=2&cityname=".$city."&key=".$appkey; 
+        return $this->getData($url);
+    }
+
+    public function getUserOpenIdList()
+    {
+        $url = "https://api.weixin.qq.com/cgi-bin/user/get?access_token=".$this->getAccessToken();
+        return $this->getData($url);
+    }
+
+    // 网页授权的接口，获取用户信息
+    public function getUserInfo()
+    {
+        $appid = $this->appid;
+
+        // 授权后重定向的回调链接地址
+        $redirect_uri = urlencode('http://119.23.60.21/login.php');
+        $scope = 'snsapi_userinfo';//应用授权作用域
+
+        $url = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=".$appid."&redirect_uri=".$redirect_uri."&response_type=code&scope=".$scope."&state=STATE#wechat_redirect";
+        header('location:' . $url);
+    }
+
+    // 拉取用户信息
+    public function getUserDetail()
+    {
+        // 通过code换取网页授权access_token
+        $code = $_GET['code'];
+        $appid = $this->appid;
+        $secret = $this->appsecret;
+
+        $url = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=".$appid."&secret=".$secret."&code=".$code."&grant_type=authorization_code";
+
+        $access_token_arr = $this->jsonToArray($this->getData($url));
+
+        // 网页授权接口调用凭证,注意：此access_token与基础支持的access_token不同
+        $access_token = $access_token_arr['access_token'];
+        $open_id = $access_token_arr['openid']; //用户唯一标识
+
+
+        // 获取用户的详细信息
+        $url = "https://api.weixin.qq.com/sns/userinfo?access_token=".$access_token."&openid=".$open_id."&lang=zh_CN";
+        return json_decode($this->getData($url), 1);
+    }
+
+    // 获取微信服务器IP地址
+    public function getIp()
+    {
+        $url = "https://api.weixin.qq.com/cgi-bin/getcallbackip?access_token=".$this->getAccessToken();
+        // 正常情况下,返回ip_list(微信服务器IP地址列表)
+        return $this->getData($url);
+    }
+
+     // 创建二维码ticket：临时
+    public function getQrCode()
+    {
+        // 1. 创建二维码ticket
+        $url = "https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=".$this->getAccessToken();
+
+        /*
+            expire_seconds  该二维码有效时间，以秒为单位。 最大不超过2592000（即30天），此字段如果不填，则默认有效期为30秒。
+            action_name     二维码类型，QR_SCENE为临时,QR_LIMIT_SCENE为永久,QR_LIMIT_STR_SCENE为永久的字符串参数值
+            scene_id        场景值ID，临时二维码时为32位非0整型，永久二维码时最大值为100000（目前参数只支持1--100000）
+         */
+        
+        $postStr = '{"expire_seconds": 604800, "action_name": "QR_SCENE", "action_info": {"scene": {"scene_id": 888}}}';
+        $ret = $this->getData($url, 'POST', $postStr);
+        $arr = $this->jsonToArray($ret);
+        $ticket = $arr['ticket'];
+
+        // 2.通过ticket换取二维码
+        // 提醒：1. TICKET记得进行UrlEncode
+        // ticket正确情况下，http 返回码是200，是一张图片，可以直接展示或者下载。(不需要curl请求)
+        $imgUrl = "https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=".urlencode($ticket);
+        return $imgUrl;
+    }
+
+    private function getJsApiTicket() {
+    // jsapi_ticket 应该全局存储与更新，以下代码以写入到文件中做示例
+    $data = json_decode($this->get_php_file("jsapi_ticket.php"));
+    if ($data->expire_time < time()) {
+      $accessToken = $this->getAccessToken();
+      // 如果是企业号用以下 URL 获取 ticket
+      // $url = "https://qyapi.weixin.qq.com/cgi-bin/get_jsapi_ticket?access_token=$accessToken";
+      // https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=
+      $url = "https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token=$accessToken";
+      $res = json_decode($this->httpGet($url));
+      $ticket = $res->ticket;
+      if ($ticket) {
+        $data->expire_time = time() + 7000;
+        $data->jsapi_ticket = $ticket;
+        $this->set_php_file("jsapi_ticket.php", json_encode($data));
+      }
+    } else {
+      $ticket = $data->jsapi_ticket;
+    }
+
+    return $ticket;
+  }
+
+  private function httpGet($url) {
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_TIMEOUT, 500);
+    // 为保证第三方服务器与微信服务器之间数据传输的安全性，所有微信接口采用https方式调用，必须使用下面2行代码打开ssl安全校验。
+    // 如果在部署过程中代码在此处验证失败，请到 http://curl.haxx.se/ca/cacert.pem 下载新的证书判别文件。
+    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, true);
+    curl_setopt($curl, CURLOPT_URL, $url);
+
+    $res = curl_exec($curl);
+    curl_close($curl);
+
+    return $res;
+  }
+
+  private function createNonceStr($length = 16) {
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    $str = "";
+    for ($i = 0; $i < $length; $i++) {
+      $str .= substr($chars, mt_rand(0, strlen($chars) - 1), 1);
+    }
+    return $str;
+  }
+
+  private function get_php_file($filename) {
+    return trim(substr(file_get_contents($filename), 15));
+  }
+
+  private function set_php_file($filename, $content) {
+    $fp = fopen($filename, "w");
+    fwrite($fp, "<?php exit();?>" . $content);
+    fclose($fp);
+  }
+
+  public function getSignPackage() {
+    $jsapiTicket = $this->getJsApiTicket();
+
+    // 注意 URL 一定要动态获取，不能 hardcode.
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $url = "$protocol$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+
+    $timestamp = time();
+    $nonceStr = $this->createNonceStr();
+
+    // 这里参数的顺序要按照 key 值 ASCII 码升序排序
+    $string = "jsapi_ticket=$jsapiTicket&noncestr=$nonceStr&timestamp=$timestamp&url=$url";
+
+    $signature = sha1($string);
+
+    $signPackage = array(
+      "appId"     => $this->appid,
+      "nonceStr"  => $nonceStr,
+      "timestamp" => $timestamp,
+      "url"       => $url,
+      "signature" => $signature,
+      "rawString" => $string
+    );
+    return $signPackage; 
+  }
 }
